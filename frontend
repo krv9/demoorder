@@ -1,0 +1,148 @@
+//***home.ts***//
+import { Component, OnInit } from '@angular/core';
+import { Router } from '@angular/router';
+import { HttpService } from '../service/http.service';
+
+
+@Component({
+  selector: 'app-home',
+  templateUrl: './home.component.html',
+  styleUrls: ['./home.component.css']
+})
+export class HomeComponent implements OnInit {
+
+  Stocks:any[]=[];
+
+  constructor(private router:Router,private http:HttpService) { }
+  
+  ngOnInit() {
+    this.getStocks();
+  }
+
+  onClick(){
+    console.log("Add is clicked");
+    this.router.navigate(['/add']);
+  }
+  editClick(Stocks:any){
+    console.log("Edit is clicked",Stocks);
+    this.router.navigate(['/edit/',Stocks.id]);
+  }
+
+  getStocks(){
+    this.http.getstocks().subscribe(
+      (data)=>{
+        console.log(this.Stocks);
+        this.Stocks=data;
+        console.log(this.Stocks);
+      },
+      (error)=>{
+        console.error("Error in fetching data : ",error);
+      }
+    );
+  }
+
+  deleteClick(stock: any): void {
+    this.http.deletestock(stock.id).subscribe({
+      next: (response) => {
+        console.log("Deleted:", response);
+        alert('Stock deleted successfully');
+        this.getStocks(); // <-- Reload the updated list
+      },
+      error: (error) => {
+        console.error("Error in deleting:", error);
+        alert('Error deleting stock');
+      }
+    });
+  }
+  
+  //**addcomponent.ts**//
+  import { Component, OnInit } from '@angular/core';
+import { Router } from '@angular/router';
+import { HttpService } from '../service/http.service';
+
+@Component({
+  selector: 'app-add',
+  templateUrl: './add.component.html',
+  styleUrls: ['./add.component.css']
+})
+export class AddComponent implements OnInit {
+
+  constructor(private route: Router, private http: HttpService) {}
+
+  isEdit: boolean = false;
+
+  stocks = {
+    id: null,
+    productname: '',
+    productid: '',
+    quantity: ''
+  };
+
+  id!: any;
+
+  ngOnInit(): void {
+    // ✅ Subscribe to the ID from the BehaviorSubject
+    this.http.currentId$.subscribe(id => {
+      if (id !== null) {
+        this.id = id;
+        this.isEdit = true;
+        this.loadData(id);
+      } else {
+        this.isEdit = false;
+      }
+    });
+  }
+
+  homeClick() {
+    this.route.navigate(['/home']);
+  }
+
+  loadData(id: any) {
+    this.http.getstockbyid(id).subscribe(
+      (res) => {
+        console.log(res);
+        this.stocks = res;
+      },
+      error => {
+        console.log(error);
+        alert('Failed to load data');
+      }
+    );
+  }
+
+  saveSubmit(form: any) {
+    if (this.isEdit) {
+      console.log('update');
+      const updatedata = {
+        id: this.stocks.id,
+        productname: this.stocks.productname,
+        productid: this.stocks.productid,
+        quantity: this.stocks.quantity
+      };
+      this.http.updateStock(this.id, updatedata).subscribe(
+        () => {
+          alert('Stock Updated');
+          this.route.navigate(['/']);
+        },
+        error => {
+          console.error(error);
+          alert('Failed');
+        }
+      );
+    } else {
+      console.log('add');
+      const newStock = {
+        productname: this.stocks.productname,
+        productid: this.stocks.productid,
+        quantity: this.stocks.quantity
+      };
+      this.http.addStock(newStock).subscribe(() => {
+        alert('Stock generated');
+        this.route.navigate(['/']);
+      }, error => {
+        console.error(error);
+        alert('Failed');
+      });
+    }
+  }
+}
